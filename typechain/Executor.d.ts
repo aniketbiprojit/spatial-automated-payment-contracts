@@ -255,7 +255,7 @@ export class Executor extends BaseContract {
       }[],
       signatures: BytesLike[],
       overrides?: CallOverrides
-    ): Promise<void>;
+    ): Promise<boolean[]>;
 
     initialize(
       _INVOICE_CONTRACT: string,
