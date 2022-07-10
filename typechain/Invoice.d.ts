@@ -21,26 +21,38 @@ import type { TypedEventFilter, TypedEvent, TypedListener } from "./common";
 
 interface InvoiceInterface extends ethers.utils.Interface {
   functions: {
+    "EXECUTOR_CONTRACT()": FunctionFragment;
     "UNIQUE_INDENTIFIER()": FunctionFragment;
+    "cancelledInvoices(uint256)": FunctionFragment;
     "createInvoice((address,address,uint256,address,uint8,uint256,uint256,uint256,uint256,bytes32))": FunctionFragment;
     "currencies(address)": FunctionFragment;
+    "execute((address,address,uint256,address,uint8,uint256,uint256,uint256,uint256,bytes32),bytes)": FunctionFragment;
     "feePercent()": FunctionFragment;
-    "initialize()": FunctionFragment;
+    "initialize(address)": FunctionFragment;
     "isAdmin(address)": FunctionFragment;
     "nonce()": FunctionFragment;
     "owner()": FunctionFragment;
     "payees(address)": FunctionFragment;
     "renounceOwnership()": FunctionFragment;
     "setCurrency(address[],bool)": FunctionFragment;
+    "setExecutorContract(address)": FunctionFragment;
     "setFeePercent(uint256)": FunctionFragment;
     "transferOwnership(address)": FunctionFragment;
-    "verifySignature(address,(address,address,uint256,address,uint8,uint256,uint256,uint256,uint256,bytes32),bytes)": FunctionFragment;
+    "verifySignature((address,address,uint256,address,uint8,uint256,uint256,uint256,uint256,bytes32),bytes)": FunctionFragment;
     "whitelistPayee(address[],bool)": FunctionFragment;
   };
 
   encodeFunctionData(
+    functionFragment: "EXECUTOR_CONTRACT",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "UNIQUE_INDENTIFIER",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "cancelledInvoices",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "createInvoice",
@@ -61,13 +73,28 @@ interface InvoiceInterface extends ethers.utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "currencies", values: [string]): string;
   encodeFunctionData(
+    functionFragment: "execute",
+    values: [
+      {
+        payee: string;
+        payer: string;
+        amount: BigNumberish;
+        currency: string;
+        frequency: BigNumberish;
+        startingTime: BigNumberish;
+        durationForRetiresBeforeFailure: BigNumberish;
+        expiry: BigNumberish;
+        paymentNonce: BigNumberish;
+        paymentParameter: BytesLike;
+      },
+      BytesLike
+    ]
+  ): string;
+  encodeFunctionData(
     functionFragment: "feePercent",
     values?: undefined
   ): string;
-  encodeFunctionData(
-    functionFragment: "initialize",
-    values?: undefined
-  ): string;
+  encodeFunctionData(functionFragment: "initialize", values: [string]): string;
   encodeFunctionData(functionFragment: "isAdmin", values: [string]): string;
   encodeFunctionData(functionFragment: "nonce", values?: undefined): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
@@ -81,6 +108,10 @@ interface InvoiceInterface extends ethers.utils.Interface {
     values: [string[], boolean]
   ): string;
   encodeFunctionData(
+    functionFragment: "setExecutorContract",
+    values: [string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "setFeePercent",
     values: [BigNumberish]
   ): string;
@@ -91,7 +122,6 @@ interface InvoiceInterface extends ethers.utils.Interface {
   encodeFunctionData(
     functionFragment: "verifySignature",
     values: [
-      string,
       {
         payee: string;
         payer: string;
@@ -113,7 +143,15 @@ interface InvoiceInterface extends ethers.utils.Interface {
   ): string;
 
   decodeFunctionResult(
+    functionFragment: "EXECUTOR_CONTRACT",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "UNIQUE_INDENTIFIER",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "cancelledInvoices",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -121,6 +159,7 @@ interface InvoiceInterface extends ethers.utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "currencies", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "execute", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "feePercent", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "isAdmin", data: BytesLike): Result;
@@ -133,6 +172,10 @@ interface InvoiceInterface extends ethers.utils.Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "setCurrency",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setExecutorContract",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -153,21 +196,79 @@ interface InvoiceInterface extends ethers.utils.Interface {
   ): Result;
 
   events: {
+    "ExecuteInvoice(tuple,uint256)": EventFragment;
     "Initialized(uint8)": EventFragment;
     "InvoiceCreated(tuple,bytes32,uint256)": EventFragment;
     "OwnershipTransferred(address,address)": EventFragment;
     "SetCurrency(address,bool)": EventFragment;
+    "SetExecutorContract(address)": EventFragment;
     "SetFeePercent(uint256)": EventFragment;
     "SetPayee(address,bool)": EventFragment;
   };
 
+  getEvent(nameOrSignatureOrTopic: "ExecuteInvoice"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "Initialized"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "InvoiceCreated"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "OwnershipTransferred"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "SetCurrency"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "SetExecutorContract"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "SetFeePercent"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "SetPayee"): EventFragment;
 }
+
+export type ExecuteInvoiceEvent = TypedEvent<
+  [
+    [
+      string,
+      string,
+      BigNumber,
+      string,
+      number,
+      BigNumber,
+      BigNumber,
+      BigNumber,
+      BigNumber,
+      string
+    ] & {
+      payee: string;
+      payer: string;
+      amount: BigNumber;
+      currency: string;
+      frequency: number;
+      startingTime: BigNumber;
+      durationForRetiresBeforeFailure: BigNumber;
+      expiry: BigNumber;
+      paymentNonce: BigNumber;
+      paymentParameter: string;
+    },
+    BigNumber
+  ] & {
+    invoiceData: [
+      string,
+      string,
+      BigNumber,
+      string,
+      number,
+      BigNumber,
+      BigNumber,
+      BigNumber,
+      BigNumber,
+      string
+    ] & {
+      payee: string;
+      payer: string;
+      amount: BigNumber;
+      currency: string;
+      frequency: number;
+      startingTime: BigNumber;
+      durationForRetiresBeforeFailure: BigNumber;
+      expiry: BigNumber;
+      paymentNonce: BigNumber;
+      paymentParameter: string;
+    };
+    start: BigNumber;
+  }
+>;
 
 export type InitializedEvent = TypedEvent<[number] & { version: number }>;
 
@@ -235,6 +336,10 @@ export type SetCurrencyEvent = TypedEvent<
   [string, boolean] & { payee: string; enabled: boolean }
 >;
 
+export type SetExecutorContractEvent = TypedEvent<
+  [string] & { EXECUTOR_CONTRACT: string }
+>;
+
 export type SetFeePercentEvent = TypedEvent<
   [BigNumber] & { _feePercent: BigNumber }
 >;
@@ -287,7 +392,14 @@ export class Invoice extends BaseContract {
   interface: InvoiceInterface;
 
   functions: {
+    EXECUTOR_CONTRACT(overrides?: CallOverrides): Promise<[string]>;
+
     UNIQUE_INDENTIFIER(overrides?: CallOverrides): Promise<[string]>;
+
+    cancelledInvoices(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
 
     createInvoice(
       invoiceData: {
@@ -307,9 +419,27 @@ export class Invoice extends BaseContract {
 
     currencies(arg0: string, overrides?: CallOverrides): Promise<[boolean]>;
 
+    execute(
+      invoiceData: {
+        payee: string;
+        payer: string;
+        amount: BigNumberish;
+        currency: string;
+        frequency: BigNumberish;
+        startingTime: BigNumberish;
+        durationForRetiresBeforeFailure: BigNumberish;
+        expiry: BigNumberish;
+        paymentNonce: BigNumberish;
+        paymentParameter: BytesLike;
+      },
+      signature: BytesLike,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
     feePercent(overrides?: CallOverrides): Promise<[BigNumber]>;
 
     initialize(
+      _EXECUTOR_CONTRACT: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -331,6 +461,11 @@ export class Invoice extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
+    setExecutorContract(
+      _EXECUTOR_CONTRACT: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
     setFeePercent(
       _feePercent: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -342,7 +477,6 @@ export class Invoice extends BaseContract {
     ): Promise<ContractTransaction>;
 
     verifySignature(
-      signer: string,
       invoiceData: {
         payee: string;
         payer: string;
@@ -366,7 +500,14 @@ export class Invoice extends BaseContract {
     ): Promise<ContractTransaction>;
   };
 
+  EXECUTOR_CONTRACT(overrides?: CallOverrides): Promise<string>;
+
   UNIQUE_INDENTIFIER(overrides?: CallOverrides): Promise<string>;
+
+  cancelledInvoices(
+    arg0: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
 
   createInvoice(
     invoiceData: {
@@ -386,9 +527,27 @@ export class Invoice extends BaseContract {
 
   currencies(arg0: string, overrides?: CallOverrides): Promise<boolean>;
 
+  execute(
+    invoiceData: {
+      payee: string;
+      payer: string;
+      amount: BigNumberish;
+      currency: string;
+      frequency: BigNumberish;
+      startingTime: BigNumberish;
+      durationForRetiresBeforeFailure: BigNumberish;
+      expiry: BigNumberish;
+      paymentNonce: BigNumberish;
+      paymentParameter: BytesLike;
+    },
+    signature: BytesLike,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   feePercent(overrides?: CallOverrides): Promise<BigNumber>;
 
   initialize(
+    _EXECUTOR_CONTRACT: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -410,6 +569,11 @@ export class Invoice extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  setExecutorContract(
+    _EXECUTOR_CONTRACT: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   setFeePercent(
     _feePercent: BigNumberish,
     overrides?: Overrides & { from?: string | Promise<string> }
@@ -421,7 +585,6 @@ export class Invoice extends BaseContract {
   ): Promise<ContractTransaction>;
 
   verifySignature(
-    signer: string,
     invoiceData: {
       payee: string;
       payer: string;
@@ -445,7 +608,14 @@ export class Invoice extends BaseContract {
   ): Promise<ContractTransaction>;
 
   callStatic: {
+    EXECUTOR_CONTRACT(overrides?: CallOverrides): Promise<string>;
+
     UNIQUE_INDENTIFIER(overrides?: CallOverrides): Promise<string>;
+
+    cancelledInvoices(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
 
     createInvoice(
       invoiceData: {
@@ -519,9 +689,29 @@ export class Invoice extends BaseContract {
 
     currencies(arg0: string, overrides?: CallOverrides): Promise<boolean>;
 
+    execute(
+      invoiceData: {
+        payee: string;
+        payer: string;
+        amount: BigNumberish;
+        currency: string;
+        frequency: BigNumberish;
+        startingTime: BigNumberish;
+        durationForRetiresBeforeFailure: BigNumberish;
+        expiry: BigNumberish;
+        paymentNonce: BigNumberish;
+        paymentParameter: BytesLike;
+      },
+      signature: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
     feePercent(overrides?: CallOverrides): Promise<BigNumber>;
 
-    initialize(overrides?: CallOverrides): Promise<void>;
+    initialize(
+      _EXECUTOR_CONTRACT: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
 
     isAdmin(user: string, overrides?: CallOverrides): Promise<boolean>;
 
@@ -539,6 +729,11 @@ export class Invoice extends BaseContract {
       overrides?: CallOverrides
     ): Promise<void>;
 
+    setExecutorContract(
+      _EXECUTOR_CONTRACT: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
     setFeePercent(
       _feePercent: BigNumberish,
       overrides?: CallOverrides
@@ -550,7 +745,6 @@ export class Invoice extends BaseContract {
     ): Promise<void>;
 
     verifySignature(
-      signer: string,
       invoiceData: {
         payee: string;
         payer: string;
@@ -575,6 +769,122 @@ export class Invoice extends BaseContract {
   };
 
   filters: {
+    "ExecuteInvoice(tuple,uint256)"(
+      invoiceData?: null,
+      start?: null
+    ): TypedEventFilter<
+      [
+        [
+          string,
+          string,
+          BigNumber,
+          string,
+          number,
+          BigNumber,
+          BigNumber,
+          BigNumber,
+          BigNumber,
+          string
+        ] & {
+          payee: string;
+          payer: string;
+          amount: BigNumber;
+          currency: string;
+          frequency: number;
+          startingTime: BigNumber;
+          durationForRetiresBeforeFailure: BigNumber;
+          expiry: BigNumber;
+          paymentNonce: BigNumber;
+          paymentParameter: string;
+        },
+        BigNumber
+      ],
+      {
+        invoiceData: [
+          string,
+          string,
+          BigNumber,
+          string,
+          number,
+          BigNumber,
+          BigNumber,
+          BigNumber,
+          BigNumber,
+          string
+        ] & {
+          payee: string;
+          payer: string;
+          amount: BigNumber;
+          currency: string;
+          frequency: number;
+          startingTime: BigNumber;
+          durationForRetiresBeforeFailure: BigNumber;
+          expiry: BigNumber;
+          paymentNonce: BigNumber;
+          paymentParameter: string;
+        };
+        start: BigNumber;
+      }
+    >;
+
+    ExecuteInvoice(
+      invoiceData?: null,
+      start?: null
+    ): TypedEventFilter<
+      [
+        [
+          string,
+          string,
+          BigNumber,
+          string,
+          number,
+          BigNumber,
+          BigNumber,
+          BigNumber,
+          BigNumber,
+          string
+        ] & {
+          payee: string;
+          payer: string;
+          amount: BigNumber;
+          currency: string;
+          frequency: number;
+          startingTime: BigNumber;
+          durationForRetiresBeforeFailure: BigNumber;
+          expiry: BigNumber;
+          paymentNonce: BigNumber;
+          paymentParameter: string;
+        },
+        BigNumber
+      ],
+      {
+        invoiceData: [
+          string,
+          string,
+          BigNumber,
+          string,
+          number,
+          BigNumber,
+          BigNumber,
+          BigNumber,
+          BigNumber,
+          string
+        ] & {
+          payee: string;
+          payer: string;
+          amount: BigNumber;
+          currency: string;
+          frequency: number;
+          startingTime: BigNumber;
+          durationForRetiresBeforeFailure: BigNumber;
+          expiry: BigNumber;
+          paymentNonce: BigNumber;
+          paymentParameter: string;
+        };
+        start: BigNumber;
+      }
+    >;
+
     "Initialized(uint8)"(
       version?: null
     ): TypedEventFilter<[number], { version: number }>;
@@ -731,6 +1041,14 @@ export class Invoice extends BaseContract {
       enabled?: null
     ): TypedEventFilter<[string, boolean], { payee: string; enabled: boolean }>;
 
+    "SetExecutorContract(address)"(
+      EXECUTOR_CONTRACT?: null
+    ): TypedEventFilter<[string], { EXECUTOR_CONTRACT: string }>;
+
+    SetExecutorContract(
+      EXECUTOR_CONTRACT?: null
+    ): TypedEventFilter<[string], { EXECUTOR_CONTRACT: string }>;
+
     "SetFeePercent(uint256)"(
       _feePercent?: null
     ): TypedEventFilter<[BigNumber], { _feePercent: BigNumber }>;
@@ -751,7 +1069,14 @@ export class Invoice extends BaseContract {
   };
 
   estimateGas: {
+    EXECUTOR_CONTRACT(overrides?: CallOverrides): Promise<BigNumber>;
+
     UNIQUE_INDENTIFIER(overrides?: CallOverrides): Promise<BigNumber>;
+
+    cancelledInvoices(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
 
     createInvoice(
       invoiceData: {
@@ -771,9 +1096,27 @@ export class Invoice extends BaseContract {
 
     currencies(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
 
+    execute(
+      invoiceData: {
+        payee: string;
+        payer: string;
+        amount: BigNumberish;
+        currency: string;
+        frequency: BigNumberish;
+        startingTime: BigNumberish;
+        durationForRetiresBeforeFailure: BigNumberish;
+        expiry: BigNumberish;
+        paymentNonce: BigNumberish;
+        paymentParameter: BytesLike;
+      },
+      signature: BytesLike,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     feePercent(overrides?: CallOverrides): Promise<BigNumber>;
 
     initialize(
+      _EXECUTOR_CONTRACT: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -795,6 +1138,11 @@ export class Invoice extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
+    setExecutorContract(
+      _EXECUTOR_CONTRACT: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     setFeePercent(
       _feePercent: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -806,7 +1154,6 @@ export class Invoice extends BaseContract {
     ): Promise<BigNumber>;
 
     verifySignature(
-      signer: string,
       invoiceData: {
         payee: string;
         payer: string;
@@ -831,7 +1178,14 @@ export class Invoice extends BaseContract {
   };
 
   populateTransaction: {
+    EXECUTOR_CONTRACT(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
     UNIQUE_INDENTIFIER(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    cancelledInvoices(
+      arg0: BigNumberish,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
@@ -856,9 +1210,27 @@ export class Invoice extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
+    execute(
+      invoiceData: {
+        payee: string;
+        payer: string;
+        amount: BigNumberish;
+        currency: string;
+        frequency: BigNumberish;
+        startingTime: BigNumberish;
+        durationForRetiresBeforeFailure: BigNumberish;
+        expiry: BigNumberish;
+        paymentNonce: BigNumberish;
+        paymentParameter: BytesLike;
+      },
+      signature: BytesLike,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
     feePercent(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     initialize(
+      _EXECUTOR_CONTRACT: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -886,6 +1258,11 @@ export class Invoice extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
+    setExecutorContract(
+      _EXECUTOR_CONTRACT: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
     setFeePercent(
       _feePercent: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -897,7 +1274,6 @@ export class Invoice extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     verifySignature(
-      signer: string,
       invoiceData: {
         payee: string;
         payer: string;

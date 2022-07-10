@@ -5,15 +5,17 @@ import "../utils/AbstractAccessControl.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
-import "hardhat/console.sol";
+import "./AbstractInvoice.sol";
 
-contract Invoice is AbstractAccessControl {
+contract Invoice is AbstractAccessControl, AbstractInvoice {
 	using SafeERC20Upgradeable for IERC20Upgradeable;
 	using StringsUpgradeable for uint256;
 
 	string public UNIQUE_INDENTIFIER;
 
-	function initialize() public initializer {
+	address public EXECUTOR_CONTRACT;
+
+	function initialize(address _EXECUTOR_CONTRACT) public initializer {
 		init();
 		UNIQUE_INDENTIFIER = "PBIT-APP";
 		feePercent = 10;
@@ -24,22 +26,16 @@ contract Invoice is AbstractAccessControl {
 		_durations[Frequency.Monthly] = 30 days;
 		_durations[Frequency.Quarterly] = 180 days;
 		_durations[Frequency.Yearly] = 365 days;
+
+		EXECUTOR_CONTRACT = _EXECUTOR_CONTRACT;
 	}
 
 	uint256 public feePercent;
 
-	enum Frequency {
-		Single,
-		Daily,
-		Weekly,
-		Monthly,
-		Quarterly,
-		Yearly
-	}
-
 	mapping(Frequency => uint256) internal _durations;
 
 	mapping(bytes32 => bool) internal _createdInvoices;
+	mapping(bytes32 => mapping(uint256 => bool)) internal _paidInvoices;
 	mapping(uint256 => bool) public cancelledInvoices;
 
 	mapping(address => bool) public payees;
@@ -52,41 +48,20 @@ contract Invoice is AbstractAccessControl {
 		Frequency frequency,
 		uint256 durationForRetiresBeforeFailure,
 		uint256 expiry
-	) internal view returns (bool) {
+	) internal view returns (bool, uint256) {
 		uint256 start = startingTime;
 		uint256 end = start + durationForRetiresBeforeFailure;
 		while (end < expiry) {
 			start += _durations[frequency];
 			end = start + durationForRetiresBeforeFailure;
 			if (block.timestamp > start && end < expiry) {
-				return true;
+				return (true, start);
 			}
 			if (start > block.timestamp) {
-				return false;
+				return (false, 0);
 			}
 		}
-		return false;
-	}
-
-	// the keccak of this should be in system
-	struct InvoiceData {
-		address payee;
-		address payer;
-		uint256 amount;
-		address currency;
-		// how often
-		Frequency frequency;
-		// first payment
-		uint256 startingTime;
-		// if first payment was supposed to be on 10-May-2022, 12PM,
-		// the system can try to make that payment for next 24 hours buffer
-		uint256 durationForRetiresBeforeFailure;
-		// expiration of payment
-		uint256 expiry;
-		// payment nonce
-		uint256 paymentNonce;
-		// unique paramater
-		bytes32 paymentParameter;
+		return (false, 0);
 	}
 
 	function _createInvoice(InvoiceData memory invoiceData)
@@ -139,27 +114,25 @@ contract Invoice is AbstractAccessControl {
 		emit InvoiceCreated(returnedInvoice, _hash, _nonce);
 	}
 
-	// TODO: fix execute invoice so that
-	// a single nonce cannot execute multiple times
 	function _executeInvoice(InvoiceData memory invoiceData) internal {
 		bytes32 _hash = keccak256(abi.encode(invoiceData));
 
-		require(_createdInvoices[_hash] == true, "Invoice not found");
+		require(_createdInvoices[_hash], "Invoice not found");
 
-		require(
-			isInRange(
-				invoiceData.startingTime,
-				invoiceData.frequency,
-				invoiceData.durationForRetiresBeforeFailure,
-				invoiceData.expiry
-			),
-			"Cannot execute"
+		(bool inRange, uint256 start) = isInRange(
+			invoiceData.startingTime,
+			invoiceData.frequency,
+			invoiceData.durationForRetiresBeforeFailure,
+			invoiceData.expiry
 		);
+		require(inRange, "Cannot execute");
+		require(_paidInvoices[_hash][start] == false, "Already paid");
 		require(
 			cancelledInvoices[invoiceData.paymentNonce] != true,
 			"Cancelled invoice"
 		);
 		(uint256 pending, uint256 fee) = feePercentOfX(invoiceData.amount);
+		_paidInvoices[_hash][start] = true;
 		IERC20Upgradeable(invoiceData.currency).safeTransferFrom(
 			invoiceData.payer,
 			invoiceData.payee,
@@ -170,6 +143,27 @@ contract Invoice is AbstractAccessControl {
 			address(this),
 			fee
 		);
+
+		emit ExecuteInvoice(invoiceData, start);
+	}
+
+	function _executeInvoiceWithSignature(
+		InvoiceData memory invoiceData,
+		bytes memory signature
+	) internal {
+		require(
+			verifySignature(invoiceData, signature),
+			"Signature verification failed"
+		);
+		_executeInvoice(invoiceData);
+	}
+
+	function execute(InvoiceData memory invoiceData, bytes memory signature)
+		external
+		override
+	{
+		require(_msgSender() == EXECUTOR_CONTRACT, "Only executor contract");
+		_executeInvoiceWithSignature(invoiceData, signature);
 	}
 
 	event InvoiceCreated(
@@ -220,20 +214,29 @@ contract Invoice is AbstractAccessControl {
 	}
 
 	function verifySignature(
-		address signer,
 		InvoiceData memory invoiceData,
 		bytes memory signature
 	) public view returns (bool) {
 		bytes32 hash = keccak256(abi.encode(invoiceData));
 		return
 			SignatureCheckerUpgradeable.isValidSignatureNow(
-				signer,
+				invoiceData.payer,
 				ECDSAUpgradeable.toEthSignedMessageHash(hash),
 				signature
 			);
 	}
 
+	function setExecutorContract(address _EXECUTOR_CONTRACT)
+		external
+		onlyAdmin
+	{
+		EXECUTOR_CONTRACT = _EXECUTOR_CONTRACT;
+		emit SetExecutorContract(EXECUTOR_CONTRACT);
+	}
+
 	event SetPayee(address payee, bool enabled);
 	event SetCurrency(IERC20Upgradeable payee, bool enabled);
 	event SetFeePercent(uint256 _feePercent);
+	event SetExecutorContract(address EXECUTOR_CONTRACT);
+	event ExecuteInvoice(InvoiceData invoiceData, uint256 start);
 }

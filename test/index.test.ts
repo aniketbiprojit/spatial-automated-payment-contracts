@@ -50,12 +50,8 @@ describe("Invoice.sol", () => {
 		);
 		const hash = arrayify(keccak256(encoded));
 		const signature = await signer.signMessage(hash);
-		expect(
-			await Invoice.verifySignature(
-				deployer.address,
-				invoiceData,
-				signature
-			)
-		).to.eq(true);
+		expect(await Invoice.verifySignature(invoiceData, signature)).to.eq(
+			true
+		);
 	});
 });

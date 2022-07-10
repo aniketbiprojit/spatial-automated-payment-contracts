@@ -1,3 +1,4 @@
+import { constants } from "ethers";
 import { DeployFunction } from "hardhat-deploy/dist/types";
 
 const func: DeployFunction = async (hre) => {
@@ -12,7 +13,7 @@ const func: DeployFunction = async (hre) => {
 			execute: {
 				init: {
 					methodName: "initialize",
-					args: [],
+					args: [constants.AddressZero],
 				},
 			},
 		},

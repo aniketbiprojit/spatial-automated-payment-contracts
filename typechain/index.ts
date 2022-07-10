@@ -7,6 +7,8 @@ export type { Initializable } from "./Initializable";
 export type { ReentrancyGuardUpgradeable } from "./ReentrancyGuardUpgradeable";
 export type { IERC20Upgradeable } from "./IERC20Upgradeable";
 export type { ContextUpgradeable } from "./ContextUpgradeable";
+export type { Executor } from "./Executor";
+export type { AbstractInvoice } from "./AbstractInvoice";
 export type { Invoice } from "./Invoice";
 export type { AbstractAccessControl } from "./AbstractAccessControl";
 
@@ -16,5 +18,7 @@ export { Initializable__factory } from "./factories/Initializable__factory";
 export { ReentrancyGuardUpgradeable__factory } from "./factories/ReentrancyGuardUpgradeable__factory";
 export { IERC20Upgradeable__factory } from "./factories/IERC20Upgradeable__factory";
 export { ContextUpgradeable__factory } from "./factories/ContextUpgradeable__factory";
+export { Executor__factory } from "./factories/Executor__factory";
+export { AbstractInvoice__factory } from "./factories/AbstractInvoice__factory";
 export { Invoice__factory } from "./factories/Invoice__factory";
 export { AbstractAccessControl__factory } from "./factories/AbstractAccessControl__factory";
