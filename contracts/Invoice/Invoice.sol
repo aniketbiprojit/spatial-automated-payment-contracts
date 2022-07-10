@@ -4,6 +4,8 @@ pragma solidity 0.8.6;
 import "../utils/AbstractAccessControl.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
+import "hardhat/console.sol";
 
 contract Invoice is AbstractAccessControl {
 	using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -146,6 +148,21 @@ contract Invoice is AbstractAccessControl {
 	modifier onlyPayee() {
 		require(payees[_msgSender()], "Caller is not payee.");
 		_;
+	}
+
+	function onlyWithSignature(
+		address signer,
+		uint256 amount,
+		bytes memory signature
+	) external view returns (bool) {
+		bytes32 hash = keccak256(abi.encodePacked(amount));
+		console.logBytes32(hash);
+		return
+			SignatureCheckerUpgradeable.isValidSignatureNow(
+				signer,
+				ECDSAUpgradeable.toEthSignedMessageHash(hash),
+				signature
+			);
 	}
 
 	event SetPayee(address payee, bool enabled);

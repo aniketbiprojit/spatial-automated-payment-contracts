@@ -2,6 +2,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export type { OwnableUpgradeable } from "./OwnableUpgradeable";
+export type { IERC1271Upgradeable } from "./IERC1271Upgradeable";
 export type { Initializable } from "./Initializable";
 export type { ReentrancyGuardUpgradeable } from "./ReentrancyGuardUpgradeable";
 export type { IERC20Upgradeable } from "./IERC20Upgradeable";
@@ -10,6 +11,7 @@ export type { Invoice } from "./Invoice";
 export type { AbstractAccessControl } from "./AbstractAccessControl";
 
 export { OwnableUpgradeable__factory } from "./factories/OwnableUpgradeable__factory";
+export { IERC1271Upgradeable__factory } from "./factories/IERC1271Upgradeable__factory";
 export { Initializable__factory } from "./factories/Initializable__factory";
 export { ReentrancyGuardUpgradeable__factory } from "./factories/ReentrancyGuardUpgradeable__factory";
 export { IERC20Upgradeable__factory } from "./factories/IERC20Upgradeable__factory";

@@ -28,6 +28,7 @@ interface InvoiceInterface extends ethers.utils.Interface {
     "initialize()": FunctionFragment;
     "isAdmin(address)": FunctionFragment;
     "nonce()": FunctionFragment;
+    "onlyWithSignature(address,uint256,bytes)": FunctionFragment;
     "owner()": FunctionFragment;
     "payees(address)": FunctionFragment;
     "renounceOwnership()": FunctionFragment;
@@ -69,6 +70,10 @@ interface InvoiceInterface extends ethers.utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "isAdmin", values: [string]): string;
   encodeFunctionData(functionFragment: "nonce", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "onlyWithSignature",
+    values: [string, BigNumberish, BytesLike]
+  ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(functionFragment: "payees", values: [string]): string;
   encodeFunctionData(
@@ -105,6 +110,10 @@ interface InvoiceInterface extends ethers.utils.Interface {
   decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "isAdmin", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "nonce", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "onlyWithSignature",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "payees", data: BytesLike): Result;
   decodeFunctionResult(
@@ -293,6 +302,13 @@ export class Invoice extends BaseContract {
 
     nonce(overrides?: CallOverrides): Promise<[BigNumber]>;
 
+    onlyWithSignature(
+      signer: string,
+      amount: BigNumberish,
+      signature: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
+
     owner(overrides?: CallOverrides): Promise<[string]>;
 
     payees(arg0: string, overrides?: CallOverrides): Promise<[boolean]>;
@@ -353,6 +369,13 @@ export class Invoice extends BaseContract {
   isAdmin(user: string, overrides?: CallOverrides): Promise<boolean>;
 
   nonce(overrides?: CallOverrides): Promise<BigNumber>;
+
+  onlyWithSignature(
+    signer: string,
+    amount: BigNumberish,
+    signature: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
 
   owner(overrides?: CallOverrides): Promise<string>;
 
@@ -466,6 +489,13 @@ export class Invoice extends BaseContract {
     isAdmin(user: string, overrides?: CallOverrides): Promise<boolean>;
 
     nonce(overrides?: CallOverrides): Promise<BigNumber>;
+
+    onlyWithSignature(
+      signer: string,
+      amount: BigNumberish,
+      signature: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
 
     owner(overrides?: CallOverrides): Promise<string>;
 
@@ -703,6 +733,13 @@ export class Invoice extends BaseContract {
 
     nonce(overrides?: CallOverrides): Promise<BigNumber>;
 
+    onlyWithSignature(
+      signer: string,
+      amount: BigNumberish,
+      signature: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
     owner(overrides?: CallOverrides): Promise<BigNumber>;
 
     payees(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
@@ -772,6 +809,13 @@ export class Invoice extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     nonce(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    onlyWithSignature(
+      signer: string,
+      amount: BigNumberish,
+      signature: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
 
     owner(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
