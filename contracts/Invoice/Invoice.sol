@@ -103,6 +103,8 @@ contract Invoice is AbstractAccessControl {
 		emit InvoiceCreated(returnedInvoice, _hash, _nonce);
 	}
 
+	function _executeInvoice(InvoiceData memory invoiceData) internal {}
+
 	event InvoiceCreated(
 		InvoiceData invoiceData,
 		bytes32 _hash,
@@ -150,13 +152,12 @@ contract Invoice is AbstractAccessControl {
 		_;
 	}
 
-	function onlyWithSignature(
+	function verifySignature(
 		address signer,
-		uint256 amount,
+		InvoiceData memory invoiceData,
 		bytes memory signature
-	) external view returns (bool) {
-		bytes32 hash = keccak256(abi.encodePacked(amount));
-		console.logBytes32(hash);
+	) public view returns (bool) {
+		bytes32 hash = keccak256(abi.encode(invoiceData));
 		return
 			SignatureCheckerUpgradeable.isValidSignatureNow(
 				signer,
