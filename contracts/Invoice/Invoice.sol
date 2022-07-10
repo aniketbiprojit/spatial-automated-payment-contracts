@@ -17,6 +17,13 @@ contract Invoice is AbstractAccessControl {
 		init();
 		UNIQUE_INDENTIFIER = "PBIT-APP";
 		feePercent = 10;
+
+		_durations[Frequency.Single] = 0;
+		_durations[Frequency.Daily] = 24 hours;
+		_durations[Frequency.Weekly] = 7 days;
+		_durations[Frequency.Monthly] = 30 days;
+		_durations[Frequency.Quarterly] = 180 days;
+		_durations[Frequency.Yearly] = 365 days;
 	}
 
 	uint256 public feePercent;
@@ -30,12 +37,36 @@ contract Invoice is AbstractAccessControl {
 		Yearly
 	}
 
+	mapping(Frequency => uint256) internal _durations;
+
 	mapping(bytes32 => bool) internal _createdInvoices;
+	mapping(uint256 => bool) public cancelledInvoices;
 
 	mapping(address => bool) public payees;
 	mapping(IERC20Upgradeable => bool) public currencies;
 
 	uint256 public nonce;
+
+	function isInRange(
+		uint256 startingTime,
+		Frequency frequency,
+		uint256 durationForRetiresBeforeFailure,
+		uint256 expiry
+	) internal view returns (bool) {
+		uint256 start = startingTime;
+		uint256 end = start + durationForRetiresBeforeFailure;
+		while (end < expiry) {
+			start += _durations[frequency];
+			end = start + durationForRetiresBeforeFailure;
+			if (block.timestamp > start && end < expiry) {
+				return true;
+			}
+			if (start > block.timestamp) {
+				return false;
+			}
+		}
+		return false;
+	}
 
 	// the keccak of this should be in system
 	struct InvoiceData {
@@ -75,8 +106,13 @@ contract Invoice is AbstractAccessControl {
 		require(
 			invoiceData.expiry > invoiceData.startingTime &&
 				((invoiceData.expiry - invoiceData.startingTime) > 24 hours),
-			"Expiry should be greate than 24 hours"
+			"Expiry should be greater than 24 hours"
 		);
+		require(
+			invoiceData.durationForRetiresBeforeFailure > 12 hours,
+			"Duration for retries should be greater than 12 hours"
+		);
+
 		nonce += 1;
 		invoiceData.paymentParameter = keccak256(
 			abi.encode(UNIQUE_INDENTIFIER, "-", nonce.toString())
@@ -103,7 +139,38 @@ contract Invoice is AbstractAccessControl {
 		emit InvoiceCreated(returnedInvoice, _hash, _nonce);
 	}
 
-	function _executeInvoice(InvoiceData memory invoiceData) internal {}
+	// TODO: fix execute invoice so that
+	// a single nonce cannot execute multiple times
+	function _executeInvoice(InvoiceData memory invoiceData) internal {
+		bytes32 _hash = keccak256(abi.encode(invoiceData));
+
+		require(_createdInvoices[_hash] == true, "Invoice not found");
+
+		require(
+			isInRange(
+				invoiceData.startingTime,
+				invoiceData.frequency,
+				invoiceData.durationForRetiresBeforeFailure,
+				invoiceData.expiry
+			),
+			"Cannot execute"
+		);
+		require(
+			cancelledInvoices[invoiceData.paymentNonce] != true,
+			"Cancelled invoice"
+		);
+		(uint256 pending, uint256 fee) = feePercentOfX(invoiceData.amount);
+		IERC20Upgradeable(invoiceData.currency).safeTransferFrom(
+			invoiceData.payer,
+			invoiceData.payee,
+			pending
+		);
+		IERC20Upgradeable(invoiceData.currency).safeTransferFrom(
+			invoiceData.payer,
+			address(this),
+			fee
+		);
+	}
 
 	event InvoiceCreated(
 		InvoiceData invoiceData,
