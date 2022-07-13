@@ -75,16 +75,16 @@ contract Invoice is AbstractAccessControl, AbstractInvoice {
 			"Not a valid currency"
 		);
 		require(
-			invoiceData.startingTime > (block.timestamp + 1 hours),
+			invoiceData.startingTime >= (block.timestamp + 1 hours),
 			"Invoice too soon. Cannot process"
 		);
 		require(
 			invoiceData.expiry > invoiceData.startingTime &&
-				((invoiceData.expiry - invoiceData.startingTime) > 24 hours),
+				((invoiceData.expiry - invoiceData.startingTime) >= 24 hours),
 			"Expiry should be greater than 24 hours"
 		);
 		require(
-			invoiceData.durationForRetiresBeforeFailure > 12 hours,
+			invoiceData.durationForRetiresBeforeFailure >= 12 hours,
 			"Duration for retries should be greater than 12 hours"
 		);
 
@@ -173,7 +173,7 @@ contract Invoice is AbstractAccessControl, AbstractInvoice {
 	);
 
 	function setFeePercent(uint256 _feePercent) external onlyAdmin {
-		require(_feePercent < 100 && _feePercent > 100, "Out of range");
+		require(_feePercent < 100 && _feePercent > 0, "Out of range");
 		feePercent = _feePercent;
 		emit SetFeePercent(feePercent);
 	}

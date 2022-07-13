@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { arrayify, defaultAbiCoder, keccak256 } from "ethers/lib/utils";
 import { ethers } from "hardhat";
+import { PromiseType } from "utility-types";
 import { setupInvoice } from "./fixture";
 
 describe("Invoice.sol", () => {
@@ -53,5 +54,51 @@ describe("Invoice.sol", () => {
 		expect(await Invoice.verifySignature(invoiceData, signature)).to.eq(
 			true
 		);
+	});
+
+	describe("Invoice", () => {
+		type SetupInvoice = PromiseType<ReturnType<typeof setupInvoice>>;
+		type UserType = SetupInvoice["deployer"];
+		let deployer: UserType, alice: UserType, bob: UserType;
+		let Invoice: SetupInvoice["Invoice"];
+		let Executor: SetupInvoice["Executor"];
+		let ERC20: SetupInvoice["ERC20"];
+		beforeEach(async () => {
+			({
+				deployer,
+				users: [alice, bob],
+				Invoice,
+				Executor,
+				ERC20,
+			} = await setupInvoice());
+			expect(deployer).to.be.ok;
+			expect(alice).to.be.ok;
+			expect(Invoice).to.be.ok;
+			expect(Executor).to.be.ok;
+			expect(ERC20).to.be.ok;
+
+			await Invoice.setCurrency([ERC20.address], true);
+			await Invoice.whitelistPayee([alice.address], true);
+			await Invoice.setFeePercent(10);
+		});
+
+		it("create invoice", async () => {
+			const startingTime = Math.floor(Date.now() / 1000) + 3600 * 1.5;
+			const durationForRetiresBeforeFailure = 12 * 3600;
+			const expiryTime = startingTime + 3600 * 24 * 7;
+			await alice.Invoice.createInvoice({
+				payee: alice.address,
+				payer: bob.address,
+				currency: ERC20.address,
+				frequency: 2,
+				startingTime: startingTime,
+				durationForRetiresBeforeFailure:
+					durationForRetiresBeforeFailure,
+				expiry: expiryTime,
+				paymentNonce: 1,
+				paymentParameter: ethers.constants.HashZero,
+				amount: ethers.utils.parseEther("1000"),
+			});
+		});
 	});
 });
