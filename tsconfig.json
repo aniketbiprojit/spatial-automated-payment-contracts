@@ -8,5 +8,5 @@
 		"declaration": true
 	},
 	"include": ["."],
-	"files": ["./hardhat.config.ts"]
+	"files": ["./hardhat.config.ts", "./test/getSignature.ts"]
 }

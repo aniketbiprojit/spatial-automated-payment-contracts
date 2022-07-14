@@ -64,20 +64,11 @@ contract Invoice is AbstractAccessControl, AbstractInvoice {
 		return (false, 0);
 	}
 
-	function _createInvoice(InvoiceData memory invoiceData)
-		internal
-		returns (InvoiceData memory, bytes32 _hash)
-	{
+	function _createInvoice(InvoiceData memory invoiceData) internal returns (InvoiceData memory, bytes32 _hash) {
 		require(invoiceData.amount > 0, "Amount cannot be 0");
 		require(payees[invoiceData.payee], "Not a payee");
-		require(
-			currencies[IERC20Upgradeable(invoiceData.currency)],
-			"Not a valid currency"
-		);
-		require(
-			invoiceData.startingTime >= (block.timestamp + 1 hours),
-			"Invoice too soon. Cannot process"
-		);
+		require(currencies[IERC20Upgradeable(invoiceData.currency)], "Not a valid currency");
+		require(invoiceData.startingTime >= (block.timestamp + 1 hours), "Invoice too soon. Cannot process");
 		require(
 			invoiceData.expiry > invoiceData.startingTime &&
 				((invoiceData.expiry - invoiceData.startingTime) >= 24 hours),
@@ -89,9 +80,7 @@ contract Invoice is AbstractAccessControl, AbstractInvoice {
 		);
 
 		nonce += 1;
-		invoiceData.paymentParameter = keccak256(
-			abi.encode(UNIQUE_INDENTIFIER, "-", nonce.toString())
-		);
+		invoiceData.paymentParameter = keccak256(abi.encode(UNIQUE_INDENTIFIER, "-", nonce.toString()));
 		invoiceData.paymentNonce = nonce;
 		_hash = keccak256(abi.encode(invoiceData));
 		require(_createdInvoices[_hash] != true, "Already created");
@@ -125,52 +114,28 @@ contract Invoice is AbstractAccessControl, AbstractInvoice {
 			invoiceData.durationForRetiresBeforeFailure,
 			invoiceData.expiry
 		);
-		require(inRange, "Cannot execute");
+		require(inRange, "Cannot execute. Not in range");
 		require(_paidInvoices[_hash][start] == false, "Already paid");
-		require(
-			cancelledInvoices[invoiceData.paymentNonce] != true,
-			"Cancelled invoice"
-		);
+		require(cancelledInvoices[invoiceData.paymentNonce] != true, "Cancelled invoice");
 		(uint256 pending, uint256 fee) = feePercentOfX(invoiceData.amount);
 		_paidInvoices[_hash][start] = true;
-		IERC20Upgradeable(invoiceData.currency).safeTransferFrom(
-			invoiceData.payer,
-			invoiceData.payee,
-			pending
-		);
-		IERC20Upgradeable(invoiceData.currency).safeTransferFrom(
-			invoiceData.payer,
-			address(this),
-			fee
-		);
+		IERC20Upgradeable(invoiceData.currency).safeTransferFrom(invoiceData.payer, invoiceData.payee, pending);
+		IERC20Upgradeable(invoiceData.currency).safeTransferFrom(invoiceData.payer, address(this), fee);
 
 		emit ExecuteInvoice(invoiceData, start);
 	}
 
-	function _executeInvoiceWithSignature(
-		InvoiceData memory invoiceData,
-		bytes memory signature
-	) internal {
-		require(
-			verifySignature(invoiceData, signature),
-			"Signature verification failed"
-		);
+	function _executeInvoiceWithSignature(InvoiceData memory invoiceData, bytes memory signature) internal {
+		require(verifySignature(invoiceData, signature), "Signature verification failed");
 		_executeInvoice(invoiceData);
 	}
 
-	function execute(InvoiceData memory invoiceData, bytes memory signature)
-		external
-		override
-	{
+	function execute(InvoiceData memory invoiceData, bytes memory signature) external override {
 		require(_msgSender() == EXECUTOR_CONTRACT, "Only executor contract");
 		_executeInvoiceWithSignature(invoiceData, signature);
 	}
 
-	event InvoiceCreated(
-		InvoiceData invoiceData,
-		bytes32 _hash,
-		uint256 _nonce
-	);
+	event InvoiceCreated(InvoiceData invoiceData, bytes32 _hash, uint256 _nonce);
 
 	function setFeePercent(uint256 _feePercent) external onlyAdmin {
 		require(_feePercent < 100 && _feePercent > 0, "Out of range");
@@ -178,31 +143,21 @@ contract Invoice is AbstractAccessControl, AbstractInvoice {
 		emit SetFeePercent(feePercent);
 	}
 
-	function setCurrency(IERC20Upgradeable[] memory _currencies, bool enabled)
-		external
-		onlyAdmin
-	{
+	function setCurrency(IERC20Upgradeable[] memory _currencies, bool enabled) external onlyAdmin {
 		for (uint256 index = 0; index < _currencies.length; index++) {
 			currencies[_currencies[index]] = enabled;
 			emit SetCurrency(_currencies[index], enabled);
 		}
 	}
 
-	function whitelistPayee(address[] memory _payees, bool enabled)
-		external
-		onlyAdmin
-	{
+	function whitelistPayee(address[] memory _payees, bool enabled) external onlyAdmin {
 		for (uint256 index = 0; index < _payees.length; index++) {
 			payees[_payees[index]] = enabled;
 			emit SetPayee(_payees[index], enabled);
 		}
 	}
 
-	function feePercentOfX(uint256 X)
-		internal
-		view
-		returns (uint256 pending, uint256 fee)
-	{
+	function feePercentOfX(uint256 X) internal view returns (uint256 pending, uint256 fee) {
 		// _feePercent is always greater than 0 and less than 100
 		fee = ((X * 100) * feePercent) / (100 * 100);
 		pending = X - fee;
@@ -213,10 +168,7 @@ contract Invoice is AbstractAccessControl, AbstractInvoice {
 		_;
 	}
 
-	function verifySignature(
-		InvoiceData memory invoiceData,
-		bytes memory signature
-	) public view returns (bool) {
+	function verifySignature(InvoiceData memory invoiceData, bytes memory signature) public view returns (bool) {
 		bytes32 hash = keccak256(abi.encode(invoiceData));
 		return
 			SignatureCheckerUpgradeable.isValidSignatureNow(
@@ -226,10 +178,7 @@ contract Invoice is AbstractAccessControl, AbstractInvoice {
 			);
 	}
 
-	function setExecutorContract(address _EXECUTOR_CONTRACT)
-		external
-		onlyAdmin
-	{
+	function setExecutorContract(address _EXECUTOR_CONTRACT) external onlyAdmin {
 		EXECUTOR_CONTRACT = _EXECUTOR_CONTRACT;
 		emit SetExecutorContract(EXECUTOR_CONTRACT);
 	}

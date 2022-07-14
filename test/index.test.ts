@@ -1,12 +1,22 @@
 import { expect } from "chai";
-import { arrayify, defaultAbiCoder, keccak256 } from "ethers/lib/utils";
-import { ethers } from "hardhat";
+import { Event, Signer } from "ethers";
+import { defaultAbiCoder, keccak256 } from "ethers/lib/utils";
+import { ethers, network } from "hardhat";
 import { PromiseType } from "utility-types";
 import { setupInvoice } from "./fixture";
+import { getSignature } from "./getSignature";
+
+export enum Frequency {
+	Single,
+	Daily,
+	Weekly,
+	Monthly,
+	Quarterly,
+	Yearly,
+}
+export const abiCoder = defaultAbiCoder;
 
 describe("Invoice.sol", () => {
-	const abiCoder = defaultAbiCoder;
-
 	it("Signature", async () => {
 		const { Invoice, deployer } = await setupInvoice();
 		const signer = await ethers.getSigner(deployer.address);
@@ -23,37 +33,8 @@ describe("Invoice.sol", () => {
 			durationForRetiresBeforeFailure: 24,
 			currency: deployer.address,
 		};
-		const encoded = abiCoder.encode(
-			[
-				"address",
-				"address",
-				"uint256",
-				"address",
-				"uint8",
-				"uint256",
-				"uint256",
-				"uint256",
-				"uint256",
-				"bytes32",
-			],
-			[
-				invoiceData.payee,
-				invoiceData.payer,
-				invoiceData.amount,
-				invoiceData.currency,
-				invoiceData.frequency,
-				invoiceData.startingTime,
-				invoiceData.durationForRetiresBeforeFailure,
-				invoiceData.expiry,
-				invoiceData.paymentNonce,
-				invoiceData.paymentParameter,
-			]
-		);
-		const hash = arrayify(keccak256(encoded));
-		const signature = await signer.signMessage(hash);
-		expect(await Invoice.verifySignature(invoiceData, signature)).to.eq(
-			true
-		);
+		const signature = await getSignature({ invoiceData, signer });
+		expect(await Invoice.verifySignature(invoiceData, signature)).to.eq(true);
 	});
 
 	describe("Invoice", () => {
@@ -86,19 +67,38 @@ describe("Invoice.sol", () => {
 			const startingTime = Math.floor(Date.now() / 1000) + 3600 * 1.5;
 			const durationForRetiresBeforeFailure = 12 * 3600;
 			const expiryTime = startingTime + 3600 * 24 * 7;
-			await alice.Invoice.createInvoice({
+			const invoiceData = {
 				payee: alice.address,
 				payer: bob.address,
 				currency: ERC20.address,
-				frequency: 2,
+				frequency: Frequency.Daily,
 				startingTime: startingTime,
-				durationForRetiresBeforeFailure:
-					durationForRetiresBeforeFailure,
+				durationForRetiresBeforeFailure: durationForRetiresBeforeFailure,
 				expiry: expiryTime,
 				paymentNonce: 1,
 				paymentParameter: ethers.constants.HashZero,
 				amount: ethers.utils.parseEther("1000"),
-			});
+			};
+			const tx = await alice.Invoice.createInvoice(invoiceData);
+			const receipts = await tx.wait();
+			const event = receipts.events?.filter((elem) => elem.event === "InvoiceCreated")[0] as Event;
+			const { paymentParameter, paymentNonce } = event.decode?.(event.data, event.topics)?.[0];
+			invoiceData.paymentParameter = paymentParameter;
+			invoiceData.paymentNonce = paymentNonce;
+
+			await bob.ERC20.approve(Invoice.address, ethers.constants.MaxUint256);
+
+			const signature = await getSignature({ invoiceData, signer: bob });
+			expect(await Invoice.verifySignature(invoiceData, signature)).to.eq(true);
+
+			await Invoice.setExecutorContract(deployer.address);
+
+			await network.provider.send("evm_increaseTime", [startingTime]);
+			await network.provider.send("evm_mine");
+			const r = await (await Invoice.execute(invoiceData, signature)).wait();
+			expect(r.events?.[2]?.args?.[0].paymentParameter).to.eq(invoiceData.paymentParameter);
+
+			await expect(Invoice.execute(invoiceData, signature)).to.be.revertedWith("Already paid");
 		});
 	});
 });
