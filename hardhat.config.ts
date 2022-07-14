@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 
-import { HardhatUserConfig, task } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
@@ -44,10 +44,6 @@ const config: HardhatUserConfig = {
 		mumbai: {
 			url: process.env.MUMBAI_URL || "",
 			accounts: getPrivateKey(),
-			companionNetworks: {
-				l1: "goerli",
-				l2: "mumbai",
-			},
 		},
 	},
 	gasReporter: {
