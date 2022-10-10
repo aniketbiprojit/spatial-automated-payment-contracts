@@ -1,2 +1,2 @@
-## spacial-automated-payment-contracts
+## spatial-automated-payment-contracts
 
